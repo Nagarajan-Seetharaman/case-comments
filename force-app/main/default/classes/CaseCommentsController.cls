@@ -7,11 +7,11 @@ public class CaseCommentsController {
     public static String getCaseComments(String caseId) {
         String response = '';
         List<CasCommentInfoWrapper> casCommList = new List<CasCommentInfoWrapper>();
-        Map<String,Case_Comment__c> mapCustCasComment = new Map<String,Case_Comment__c>();
+        Map<String,CaseComment_Extension__c> mapCustCasComment = new Map<String,CaseComment_Extension__c>();
         Map<String,CaseComment> mapCasComment = new Map<String,CaseComment>([SELECT Id, ParentId, IsPublished, CommentBody, CreatedDate, CreatedBy.Name, LastModifiedDate, LastModifiedById FROM CaseComment 
         where parentId=:caseId order by CreatedDate desc]);
 
-        for(Case_Comment__c casComm : [SELECT Id, CaseCommentId__c,Classification__c FROM Case_Comment__c 
+        for(CaseComment_Extension__c casComm : [SELECT Id, CaseCommentId__c,Classification__c FROM CaseComment_Extension__c 
         where CaseCommentId__c=:mapCasComment.keySet() order by CreatedDate desc]){
             mapCustCasComment.put(casComm.CaseCommentId__c,casComm);
         }
@@ -41,10 +41,9 @@ public class CaseCommentsController {
                 createComm.parentId = caseCommInfo.get('CaseId');
                 insert createComm;
 
-                Case_Comment__c createCustComm = new Case_Comment__c();
+                CaseComment_Extension__c createCustComm = new CaseComment_Extension__c();
                 createCustComm.Classification__c = caseCommInfo.get('Classification');
                 createCustComm.CaseCommentId__c = createComm.Id;
-                createCustComm.Name = createComm.Id;
                 insert createCustComm;
             }
             
@@ -52,6 +51,52 @@ public class CaseCommentsController {
             System.debug(ex.getMessage());
             throw new AuraHandledException('Exception in createCaseComments method: '+ex.getMessage());            
         }
+    }
+
+    @AuraEnabled
+    public static void deleteCaseComment(String caseCommId) {
+        try {
+            if(caseCommId!=null){
+                CaseComment delComm = new CaseComment();
+                delComm.Id = caseCommId;
+                delete delComm;
+
+                CaseComment_Extension__c delCustComm =[Select id from CaseComment_Extension__c where CaseCommentId__c=: caseCommId];                
+                delete delCustComm;
+            }
+            
+        } catch (Exception ex) {
+            System.debug(ex.getMessage());
+            throw new AuraHandledException('Exception in deleteCaseComment method: '+ex.getMessage());
+        }
+
+    }
+
+    @AuraEnabled
+    public static List<String> fetchEmailAddrFromCase(String caseId) {
+        List<String> setEmailAddr = null;
+        Map<String,String> mapEmailAddr = null;
+        try {
+            if(caseId!=null){                
+                mapEmailAddr = new Map<String,String>(); 
+                for(EmailMessage emList : [select id,FromAddress, ToAddress, CcAddress from EmailMessage where ParentId =: caseId]){
+                    if(emList.FromAddress!=null)
+                        mapEmailAddr.put(emList.FromAddress, emList.FromAddress);
+                    if(emList.ToAddress!=null)
+                        mapEmailAddr.put(emList.ToAddress,emList.ToAddress);
+                    if(emList.CcAddress!=null)
+                        mapEmailAddr.put(emList.CcAddress,emList.CcAddress);
+                }
+                if (mapEmailAddr!=null && mapEmailAddr.size()>0) {
+                    setEmailAddr = new List<String>();
+                    setEmailAddr.addAll(mapEmailAddr.keySet());
+                }
+            }
+        } catch (Exception ex) {
+            System.debug(ex.getMessage());
+            throw new AuraHandledException('Exception in fetchEmailAddrFromCase method: '+ex.getMessage());
+        }
+        return setEmailAddr;
     }
 
     public class CasCommentInfoWrapper {

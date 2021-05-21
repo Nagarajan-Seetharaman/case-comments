@@ -2,11 +2,18 @@
     background-color: gainsboro;
     padding-bottom: 10px;
 }
-
-.slds-modal__container{
+.modalWidth{
     width: 60%;
     max-width: 60%;
 }
-.slds-modal__content .slds-grid{
+
+/* .slds-modal__container{
+    width: 60%;
+    max-width: 60%;
+} */
+/* .slds-modal__content .slds-grid{
     display: block;
+} */
+.modalPadding{
+    padding: 5px;
 }
