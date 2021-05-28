@@ -22,6 +22,7 @@ public class CaseCommentsController {
             casCommWrap.CommentBody = mapCasComment.get(custComm).CommentBody;
             casCommWrap.CreatedDate = mapCasComment.get(custComm).CreatedDate.format('MM/dd/yyyy hh:mm a');
             casCommWrap.createByName = mapCasComment.get(custComm).CreatedBy.Name;
+            casCommWrap.IsPublic = mapCasComment.get(custComm).IsPublished;
             casCommWrap.Classification = mapCustCasComment.get(custComm).Classification__c;
             casCommList.add(casCommWrap);
         }
@@ -39,6 +40,7 @@ public class CaseCommentsController {
                 CaseComment createComm = new CaseComment();
                 createComm.CommentBody = caseCommInfo.get('CommentBody');
                 createComm.parentId = caseCommInfo.get('CaseId');
+                createComm.IsPublished = Boolean.valueOf(caseCommInfo.get('IsPublic'));
                 insert createComm;
 
                 CaseComment_Extension__c createCustComm = new CaseComment_Extension__c();
@@ -50,6 +52,30 @@ public class CaseCommentsController {
         } catch (Exception ex) {
             System.debug(ex.getMessage());
             throw new AuraHandledException('Exception in createCaseComments method: '+ex.getMessage());            
+        }
+    }
+
+    @AuraEnabled
+    public static void updateCaseComments(Map<String,String> caseCommInfo) {
+        try {
+            if(caseCommInfo!=null && caseCommInfo.keySet().size()>0){
+                CaseComment createComm = new CaseComment();
+                createComm.CommentBody = caseCommInfo.get('CommentBody');
+                createComm.Id = caseCommInfo.get('CasCommentId');
+                createComm.IsPublished = Boolean.valueOf(caseCommInfo.get('IsPublic'));
+                update createComm;
+
+                CaseComment_Extension__c getCustCommId =[Select Id from CaseComment_Extension__c where CaseCommentId__c=: createComm.Id];
+                if(getCustCommId!=null){
+                    CaseComment_Extension__c createCustComm = new CaseComment_Extension__c();
+                    createCustComm.Classification__c = caseCommInfo.get('Classification');
+                    createCustComm.Id = getCustCommId.Id;
+                    update createCustComm;
+                }                
+            }            
+        } catch (Exception ex) {
+            System.debug(ex.getMessage());
+            throw new AuraHandledException('Exception in updateCaseComments method: '+ex.getMessage());            
         }
     }
 
@@ -110,5 +136,7 @@ public class CaseCommentsController {
         public String createByName {get;set;}
         @AuraEnabled
         public String Classification {get;set;}
+        @AuraEnabled
+        public Boolean IsPublic {get;set;}
     }
 }
