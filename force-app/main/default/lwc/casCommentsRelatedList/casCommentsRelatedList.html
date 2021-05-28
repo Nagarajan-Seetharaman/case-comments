@@ -7,6 +7,12 @@
         </template>
     </div>
 
+    <template if:true={showErrorOnPage}>
+      <div class="divErrorPage">
+        <p class="divErrorPageHead">Review the errors on this page.</p>
+        <div class="divfontSize">{error}</div>
+      </div>
+    </template>    
     <article class="slds-card lightning-card slds-card_boundary headerBottomBorder cardDisplay">
         <div class="slds-card__header slds-grid" style="height: 50px;">
           <header class="slds-media slds-media_center slds-has-flexi-truncate ">
@@ -42,7 +48,9 @@
                                     >
                 </lightning-datatable>
                 <template if:true={isNoDataFound}>
-                  <span style="font-weight: bold;">No items to display</span>
+                  <div class="divNoRecFound">
+                    No items to display.
+                  </div>
                 </template>   
             </div>
             <!-- <footer class="slds-card__footer">
@@ -64,50 +72,59 @@
                     </button>
                     <h2 class="slds-text-heading_medium slds-hyphenate">{record.Title}</h2>
                  </header>
+                 <template if:true={showErrorOnModal}>
+                  <div class="divErrorModal">
+                    <p class="divErrorPageHead">Review the errors on this page.</p>
+                    <div class="divfontSize">{error}</div>
+                  </div>
+                </template>
 
                  <div class="slds-modal__content slds-p-around_medium">                                     
                    <div class="slds-grid slds-wrap">                    
                     <div class="slds-col slds-size_1-of-2 modalPadding">
-                      <lightning-combobox
+                      <lightning-combobox class="valCmp"
                             name="Classification"
                             label="Classification"
                             value={record.Classification}
                             placeholder="Select Progress"
                             options={classsifyPickList}
                             onchange={handleFieldChange}
-                            ></lightning-combobox>
+                            required></lightning-combobox>
                     </div>
-                    <div class="slds-col slds-size_1-of-2 modalPadding">
-                      <!-- <lightning-combobox
-                            name="Classification"
-                            label="Classification"
-                            value={record.Classification}
-                            placeholder="Select Progress"
-                            options={classsifyPickList}
-                            onchange={handleFieldChange}
-                            ></lightning-combobox> -->
-                    </div>                    
+                    <div class="slds-col slds-size_1-of-2 modalPadding" style="margin-top: 20px;">
+                      <lightning-input type="checkbox" label="Public" name="IsPublic" onchange={handleFieldChange} value={record.IsPublic}></lightning-input>
+                    </div>
                     <div class="slds-col slds-size_1-of-1 modalPadding">
-                      <lightning-textarea name="CommentBody" onchange={handleFieldChange} label="Case Comment" value={record.CommentBody}></lightning-textarea>
+                      <c-custom-lookup icon-name="standard:contact"
+                                         object-name="Contact"
+                                         label="To Address"
+                                         placeholder="Select To Address"
+                                         unique-name="ToAddress"
+                                         onemailtoselection={emailToSelectionHandler}                         
+                        ></c-custom-lookup>
                     </div>
-                    <div class="slds-col slds-size_1-of-2 modalPadding">
-                      <lightning-dual-listbox name="languages"
-                            label="Select Languages"
-                            source-label="Available"
-                            selected-label="Selected"
-                            field-level-help="Select your preferred languages"
-                            options={emailAddressFrmCase}
-                            onchange={handleChange} disable-reordering></lightning-dual-listbox>
+                    <div class="slds-col slds-size_1-of-1 modalPadding">
+                      <c-custom-lookup icon-name="standard:contact"
+                                        object-name="Contact"
+                                        label="CC Address"
+                                        placeholder="Select CC Address"
+                                        unique-name="CcAddress"
+                                        onemailccselection={emailCcSelectionHandler}                         
+                       ></c-custom-lookup>
                     </div>
-                    <div class="slds-col slds-size_1-of-2 modalPadding">
-                      <lightning-dual-listbox name="languages"
-                            label="Select Languages"
-                            source-label="Available"
-                            selected-label="Selected"
-                            field-level-help="Select your preferred languages"
-                            options={dualBoxValues}
-                            onchange={handleChange} disable-reordering></lightning-dual-listbox>
+                    <div class="slds-col slds-size_1-of-1 modalPadding">
+                      <c-custom-lookup icon-name="standard:contact"
+                                       object-name="Contact"
+                                       label="Bcc Address"
+                                       placeholder="Select Bcc Address"
+                                       unique-name="BccAddress"
+                                       onemailbccselection={emailBccSelectionHandler}                         
+                      ></c-custom-lookup>
+                    </div>                    
+                    <div class="slds-col slds-size_1-of-1 modalPadding" >
+                      <lightning-textarea class="valCmp" name="CommentBody" onchange={handleFieldChange} label="Case Comment" value={record.CommentBody} required></lightning-textarea>
                     </div>
+                    
                   </div>
                    
                  </div>
@@ -123,6 +140,9 @@
     <!--###### MODAL BOX Start For Edit######-->
     <template if:true={openModalForEdit}>
       <section  class="slds-modal slds-fade-in-open">
+        <template if:true={showModalLoading}>
+          <lightning-spinner alternative-text="Loading" size="large" variant="brand"></lightning-spinner>
+        </template>
           <div class="slds-modal__container modalWidth">
               <header class="slds-modal__header">
                   <button class="slds-button slds-button_icon slds-modal__close slds-button_icon-inverse" title="Close" onclick={closeModalActionForEdit}>
@@ -130,24 +150,29 @@
                   </button>
                   <h2 class="slds-text-heading_medium slds-hyphenate">{recordEdit.Title}</h2>
                </header>
-
+               <template if:true={showErrorOnModal}>
+                <div class="divErrorModal">
+                  <p class="divErrorPageHead">Review the errors on this page.</p>
+                  <div class="divfontSize">{error}</div>
+                </div>
+              </template>
                <div class="slds-modal__content slds-p-around_medium">                   
                  <div class="slds-grid slds-wrap">                    
                   <div class="slds-col slds-size_1-of-2 modalPadding">
-                    <lightning-combobox
+                    <lightning-combobox class="valEditCmp"
                           name="Classification"
                           label="Classification"
                           value={recordEdit.Classification}
                           placeholder="Select Progress"
                           options={classsifyPickList}
                           onchange={handleFieldChangeEdit}
-                          ></lightning-combobox>
+                          required></lightning-combobox>
                   </div>
-                  <div class="slds-col slds-size_1-of-2 modalPadding">
-                    
+                  <div class="slds-col slds-size_1-of-2 modalPadding" style="margin-top: 20px;">
+                    <lightning-input type="checkbox" label="Public" name="IsPublic" onchange={handleFieldChangeEdit} checked={recordEdit.IsPublic}></lightning-input>
                   </div>                    
                   <div class="slds-col slds-size_1-of-1 modalPadding">
-                    <lightning-textarea name="CommentBody" onchange={handleFieldChangeEdit} label="Case Comment" value={recordEdit.CommentBody}></lightning-textarea>
+                    <lightning-textarea class="valEditCmp" name="CommentBody" onchange={handleFieldChangeEdit} label="Case Comment" value={recordEdit.CommentBody} required></lightning-textarea>
                   </div>                  
                 </div>                 
                </div>
@@ -173,6 +198,12 @@
                   </button>
                   <h2 class="slds-text-heading_medium slds-hyphenate">Delete Case Comment</h2>
                </header>
+               <template if:true={showErrorOnModal}>
+                <div class="divErrorModal">
+                  <p class="divErrorPageHead">Review the errors on this page.</p>
+                  <div class="divfontSize">{error}</div>
+                </div>
+              </template>
 
                <div class="slds-modal__content slds-p-around_medium slds-text-align_center">                                   
                  <span>Are you sure you want to delete this case comment?</span>                 

@@ -1,0 +1,67 @@
+<template>
+    <div class={className}>
+        <template if:true={label}>
+            <p class="slds-form-element__label">
+                <template if:true={required}>
+                    <span class="requiredAsterisk">*</span>
+                </template>
+                {label}
+            </p>
+        </template>        
+        <div class="slds-combobox_container" aria-expanded="true" aria-haspopup="listbox" role="combobox">
+            <div class="slds-combobox slds-dropdown-trigger slds-dropdown-trigger_click slds-is-open">
+                <!-- Search Input Box -->                
+                <lightning-input onchange={searchRecords} onclick={showRecords} onblur={blurEvent} class="inputBox" type="search" autocomplete="off" variant="label-hidden" placeholder={placeholder}></lightning-input>
+                <div if:true={showSpinner}>
+                    <lightning-spinner alternative-text="Loading" size="small"></lightning-spinner>
+                </div>
+                <!-- Dropdown List -->
+                <template if:true={showDropdown}>
+                    <div class="slds-dropdown slds-dropdown_length-5 slds-dropdown_fluid" >
+                        <ul class="slds-listbox slds-listbox_vertical recordListBox" >
+                            <template if:false={message} >
+                                <template for:each={recordsList} for:item="rec">
+                                    <li key={rec.Id} data-key={rec.Id} class="slds-listbox__item eachItem" onmousedown={selectItem}>
+                                        <div data-id={rec.Id} class="slds-media slds-listbox__option slds-listbox__option_entity slds-listbox__option_has-meta" role="option">
+                                            <span class="slds-media__figure slds-listbox__option-icon">                                                
+                                                <lightning-icon icon-name={iconName} alternative-text="icon" size="small"></lightning-icon>
+                                            </span>
+                                            <span class="slds-media__body">
+                                            <span class="slds-listbox__option-text slds-listbox__option-text_entity">
+                                                {rec.Name}
+                                            </span>
+                                            <span class="slds-listbox__option-meta slds-listbox__option-meta_entity">
+                                                {objectName} • {rec.Email}
+                                            </span>
+                                            </span>
+                                        </div>
+                                    </li>
+                                </template>
+                            </template>
+                            <template if:true={message} >
+                                <li class="slds-listbox__item" key={message} data-key={message} onmousedown={selectManualItem}>
+                                    <span class="slds-media slds-listbox__option_entity">{message}</span>
+                                </li>
+                            </template>
+                        </ul>
+                    </div>
+                </template>
+            </div>
+        </div>
+        <!-- Selected Value Pill -->
+        <div if:true={showPill} class="pillContainer">
+            <template for:each={selectedRecord} for:item="option">
+                <span key={option.Id}>
+                    <lightning-pill class="fullWidth" label={option.Name} name={option.Id} onremove={removeItem}>
+                        <template if:false={option.IsManual}>
+                            <lightning-icon icon-name={iconName} alternative-text="icon" size="x-small"></lightning-icon>
+                        </template>
+                        <template if:true={option.IsManual}>
+                            <lightning-icon icon-name="standard:individual" alternative-text="icon" size="x-small"></lightning-icon>
+                        </template>                        
+                    </lightning-pill>
+                </span>
+            </template>
+        </div>
+    </div>    
+</template>
