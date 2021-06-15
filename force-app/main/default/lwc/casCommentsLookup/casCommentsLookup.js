@@ -1,5 +1,5 @@
 import { LightningElement, api, track } from 'lwc';
-import search from '@salesforce/apex/CustomLookupController.search';
+import search from '@salesforce/apex/CaseCommentsLookupController.search';
 export default class CustomLookup extends LightningElement {
     @api objectName;
     fieldName = ['Name','Email'];

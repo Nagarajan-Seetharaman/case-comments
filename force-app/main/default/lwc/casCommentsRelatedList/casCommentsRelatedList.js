@@ -23,7 +23,7 @@ const columns = [
     {label: 'User', fieldName: 'createByName', type: 'text'},
     {label: 'Public', fieldName: 'IsPublic', type: 'boolean'},
     {label: 'Created Date', fieldName: 'CreatedDate', type: 'text'},
-    {label: 'Classification', fieldName: 'Classification', type: 'text'},
+    {label: 'Comment Type', fieldName: 'Classification', type: 'text'},
     {label: 'Comment', fieldName: 'CommentBody', type: 'text', wrapText:'true'},            
     {
         type: 'action',
@@ -61,6 +61,11 @@ export default class CasCommentsRelatedList extends LightningElement {
     @track ccAddress;
     @track bccAddress;
     @track invalidEmailAddr=[];
+    mapAllAddress={'ToAddress':null,'CcAddress':null,'BccAddress':null};
+
+    @track toAddressEdit=[];
+    @track ccAddressEdit=[];
+    @track bccAddressEdit=[];
 
     connectedCallback() {
         //this.initFetch();
@@ -132,7 +137,7 @@ export default class CasCommentsRelatedList extends LightningElement {
     }
 
     handleCreateRecord(){                
-        this.record = {'Classification':'','CommentBody':'','Title':'New Case Comment','IsPublic':false};
+        this.record = {'Classification':'Manual','CommentBody':'','Title':'New Case Comment','IsPublic':false};
         this.openModal = true;
         
         //clearing existing data while clikcing new button
@@ -154,28 +159,41 @@ export default class CasCommentsRelatedList extends LightningElement {
     }
 
     saveModalAction(){       
-        this.invalidEmailAddr.splice(0,this.invalidEmailAddr.length); 
-        if(this.toAddress!=undefined)
+        this.invalidEmailAddr.splice(0,this.invalidEmailAddr.length);
+        this.mapAllAddress={'ToAddress':null,'CcAddress':null,'BccAddress':null}; 
+        if(this.toAddress!=undefined){
             this.checkValidEmail(this.toAddress);
-        if(this.ccAddress!=undefined)
+            this.mapAllAddress['ToAddress']=this.toAddress;
+        }            
+        if(this.ccAddress!=undefined){
             this.checkValidEmail(this.ccAddress);
-        if(this.bccAddress!=undefined)
+            this.mapAllAddress['CcAddress']=this.ccAddress;
+        }            
+        if(this.bccAddress!=undefined){
             this.checkValidEmail(this.bccAddress);
-        
+            this.mapAllAddress['BccAddress']=this.bccAddress;
+        }            
+        console.log('All address: '+JSON.stringify(this.mapAllAddress));
+        let isToAddressAdded = true;
+        if(this.record['IsPublic'] && (this.toAddress==undefined || this.toAddress==null || this.toAddress.length==0)){
+            isToAddressAdded = false;
+        }else{
+            isToAddressAdded = true;
+        }
         const isInputsCorrect = [...this.template.querySelectorAll('.valCmp')]
             .reduce((validSoFar, inputField) => {
                 inputField.reportValidity();
                 return validSoFar && inputField.checkValidity();
             }, true);
 
-        if(this.invalidEmailAddr.length==0){
+        if(this.invalidEmailAddr.length==0 && isToAddressAdded){
             this.showErrorOnModal = false;
             if(isInputsCorrect){            
                 console.log('all valid');
                 this.showModalLoading = true;
                 this.record['CaseId'] = this.recordId;
                 console.log('record to save: '+this.record);
-                createCaseComments({ caseCommInfo: this.record })
+                createCaseComments({ caseCommInfo: this.record,allEmailAddr: this.mapAllAddress })
                     .then(result => {                
                         this.dispatchEvent(
                             new ShowToastEvent({
@@ -205,6 +223,9 @@ export default class CasCommentsRelatedList extends LightningElement {
                         console.log('Error Inside saveModalAction'+this.error);
                     });
             }
+        }else if(!isToAddressAdded){
+            this.error = `To Address is mandatory if Public checked`;
+            this.showErrorOnModal = true;
         }else{
             console.log('invalid in save: '+JSON.stringify(this.invalidEmailAddr) );
             this.error = `${this.invalidEmailAddr} not a valid email address`;
@@ -235,7 +256,11 @@ export default class CasCommentsRelatedList extends LightningElement {
         this.recordEdit['Title'] = 'Edit Case Comment';
         console.log('currentRow: '+JSON.stringify(currentRow));
         this.openModalForEdit = true;
-        this.curCasCommRecord = {'Classification':'','CommentBody':'','IsPublic':''};
+        this.curCasCommRecord = {'Classification':'','CommentBody':'','IsPublic':null};
+
+        this.toAddressEdit = this.recordEdit['CasCommToAddr'];
+        this.ccAddressEdit = this.recordEdit['CasCommCcAddr'];
+        this.bccAddressEdit = this.recordEdit['CasCommBccAddr'];
     }
 
     handleFieldChangeEdit(e){
@@ -255,52 +280,85 @@ export default class CasCommentsRelatedList extends LightningElement {
     }
 
     EditModalAction(){
+        this.invalidEmailAddr.splice(0,this.invalidEmailAddr.length);
+        this.mapAllAddress={'ToAddress':null,'CcAddress':null,'BccAddress':null}; 
+        if(this.toAddressEdit!=undefined){
+            this.checkValidEmail(this.toAddressEdit);
+            this.mapAllAddress['ToAddress']=this.toAddressEdit;
+        }            
+        if(this.ccAddressEdit!=undefined){
+            this.checkValidEmail(this.ccAddressEdit);
+            this.mapAllAddress['CcAddress']=this.ccAddressEdit;
+        }            
+        if(this.bccAddressEdit!=undefined){
+            this.checkValidEmail(this.bccAddressEdit);
+            this.mapAllAddress['BccAddress']=this.bccAddressEdit;
+        }            
+        console.log('All address: '+JSON.stringify(this.mapAllAddress));
         const isEditInputsCorrect = [...this.template.querySelectorAll('.valEditCmp')]
             .reduce((validSoFar, inputField) => {
                 inputField.reportValidity();
                 return validSoFar && inputField.checkValidity();
             }, true);
-        if(isEditInputsCorrect){
-            this.showModalLoading = true;
-            this.curCasCommRecord['CasCommentId'] = this.recordEdit['CasCommentId'];
-            if(this.curCasCommRecord['Classification'] == '')
-                this.curCasCommRecord['Classification'] = this.recordEdit['Classification'];
-            if(this.curCasCommRecord['CommentBody'] == '')
-                this.curCasCommRecord['CommentBody'] = this.recordEdit['CommentBody'];
-            if(this.curCasCommRecord['IsPublic'] == '')
-                this.curCasCommRecord['IsPublic'] = this.recordEdit['IsPublic'];
-
-            console.log('record to update: '+JSON.stringify(this.curCasCommRecord));
-            updateCaseComments({ caseCommInfo: this.curCasCommRecord })
-                .then(result => {                
-                    this.dispatchEvent(
-                        new ShowToastEvent({
-                            title: 'Success',
-                            message: 'Case Comment was saved.',
-                            variant: 'success'
-                        })
-                    );
-                    this.showModalLoading = false;
-                    this.closeModalActionForEdit();
-                    this.initFetch();
-                })
-                .catch(error => {
-                    this.error = error;
-                    this.data = undefined;
-                    this.showModalLoading = false;
+        if(this.invalidEmailAddr.length==0){
+            this.showErrorOnModal = false;
+            if(isEditInputsCorrect){                
+                this.curCasCommRecord['CasCommentId'] = this.recordEdit['CasCommentId'];
+                if(this.curCasCommRecord['Classification'] == '')
+                    this.curCasCommRecord['Classification'] = this.recordEdit['Classification'];
+                if(this.curCasCommRecord['CommentBody'] == '')
+                    this.curCasCommRecord['CommentBody'] = this.recordEdit['CommentBody'];
+                if(this.curCasCommRecord['IsPublic'] == null)
+                    this.curCasCommRecord['IsPublic'] = this.recordEdit['IsPublic'];
+    
+                console.log('record to update: '+JSON.stringify(this.curCasCommRecord));
+                let isToAddressAdded = true;
+                if(this.curCasCommRecord['IsPublic'] && (this.toAddressEdit==undefined || this.toAddressEdit==null || this.toAddressEdit.length==0)){
+                    isToAddressAdded = false;
+                }else{
+                    isToAddressAdded = true;
+                }
+                if(isToAddressAdded){
+                    this.showModalLoading = true;
+                    updateCaseComments({ caseCommInfo: this.curCasCommRecord,allEmailAddr: this.mapAllAddress })
+                    .then(result => {                
+                        this.dispatchEvent(
+                            new ShowToastEvent({
+                                title: 'Success',
+                                message: 'Case Comment was saved.',
+                                variant: 'success'
+                            })
+                        );
+                        this.showModalLoading = false;
+                        this.closeModalActionForEdit();
+                        this.initFetch();
+                    })
+                    .catch(error => {
+                        this.error = error;
+                        this.data = undefined;
+                        this.showModalLoading = false;
+                        this.showErrorOnModal = true;
+                        // UI API read operations return an array of objects
+                        if (Array.isArray(error.body)) {
+                            this.error = error.body.map(e => e.message).join(', ');
+                        } 
+                        // UI API write operations, Apex read and write operations 
+                        // and network errors return a single object
+                        else if (typeof error.body.message === 'string') {
+                            this.error = error.body.message;
+                        }
+                        console.log('Error Inside EditModalAction'+this.error);
+                    });
+                }else{
+                    this.error = `To Address is mandatory if Public checked`;
                     this.showErrorOnModal = true;
-                    // UI API read operations return an array of objects
-                    if (Array.isArray(error.body)) {
-                        this.error = error.body.map(e => e.message).join(', ');
-                    } 
-                    // UI API write operations, Apex read and write operations 
-                    // and network errors return a single object
-                    else if (typeof error.body.message === 'string') {
-                        this.error = error.body.message;
-                    }
-                    console.log('Error Inside EditModalAction'+this.error);
-                });
-        }
+                }                
+            }
+        }else{
+            console.log('invalid in save: '+JSON.stringify(this.invalidEmailAddr) );
+            this.error = `${this.invalidEmailAddr} not a valid email address`;
+            this.showErrorOnModal = true;
+        }        
     }
 
     deleteCurrentRecord(currentRow){
@@ -360,6 +418,19 @@ export default class CasCommentsRelatedList extends LightningElement {
     emailBccSelectionHandler(event){
         console.log('Selected Record Value on Parent Component Bcc is ' +  JSON.stringify(event.detail.selectedRecord));
         this.bccAddress = event.detail.selectedRecord;
+    }
+
+    emailToSelectionEditHandler(event){
+        console.log('Selected Record Value on Parent Component To is ' +  JSON.stringify(event.detail.selectedRecord));
+        this.toAddressEdit = event.detail.selectedRecord;        
+    }
+    emailCcSelectionEditHandler(event){
+        console.log('Selected Record Value on Parent Component To is ' +  JSON.stringify(event.detail.selectedRecord));
+        this.ccAddressEdit = event.detail.selectedRecord;        
+    }
+    emailBccSelectionEditHandler(event){
+        console.log('Selected Record Value on Parent Component To is ' +  JSON.stringify(event.detail.selectedRecord));
+        this.bccAddressEdit = event.detail.selectedRecord;        
     }
     
     checkValidEmail(emailAddrs){
