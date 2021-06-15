@@ -84,42 +84,42 @@
                     <div class="slds-col slds-size_1-of-2 modalPadding">
                       <lightning-combobox class="valCmp"
                             name="Classification"
-                            label="Classification"
+                            label="Comment Type"
                             value={record.Classification}
-                            placeholder="Select Progress"
+                            placeholder="Select Comment Type"
                             options={classsifyPickList}
-                            onchange={handleFieldChange}
+                            onchange={handleFieldChange}                            
                             required></lightning-combobox>
                     </div>
                     <div class="slds-col slds-size_1-of-2 modalPadding" style="margin-top: 20px;">
                       <lightning-input type="checkbox" label="Public" name="IsPublic" onchange={handleFieldChange} value={record.IsPublic}></lightning-input>
                     </div>
-                    <div class="slds-col slds-size_1-of-1 modalPadding">
-                      <c-custom-lookup icon-name="standard:contact"
+                    <div class="slds-col slds-size_1-of-1 modalPadding">                                            
+                      <c-cas-comments-lookup icon-name="standard:contact"
                                          object-name="Contact"
                                          label="To Address"
                                          placeholder="Select To Address"
                                          unique-name="ToAddress"
                                          onemailtoselection={emailToSelectionHandler}                         
-                        ></c-custom-lookup>
+                      ></c-cas-comments-lookup>
                     </div>
                     <div class="slds-col slds-size_1-of-1 modalPadding">
-                      <c-custom-lookup icon-name="standard:contact"
+                      <c-cas-comments-lookup icon-name="standard:contact"
                                         object-name="Contact"
                                         label="CC Address"
                                         placeholder="Select CC Address"
                                         unique-name="CcAddress"
                                         onemailccselection={emailCcSelectionHandler}                         
-                       ></c-custom-lookup>
+                       ></c-cas-comments-lookup>
                     </div>
                     <div class="slds-col slds-size_1-of-1 modalPadding">
-                      <c-custom-lookup icon-name="standard:contact"
+                      <c-cas-comments-lookup icon-name="standard:contact"
                                        object-name="Contact"
                                        label="Bcc Address"
                                        placeholder="Select Bcc Address"
                                        unique-name="BccAddress"
                                        onemailbccselection={emailBccSelectionHandler}                         
-                      ></c-custom-lookup>
+                      ></c-cas-comments-lookup>
                     </div>                    
                     <div class="slds-col slds-size_1-of-1 modalPadding" >
                       <lightning-textarea class="valCmp" name="CommentBody" onchange={handleFieldChange} label="Case Comment" value={record.CommentBody} required></lightning-textarea>
@@ -161,15 +161,48 @@
                   <div class="slds-col slds-size_1-of-2 modalPadding">
                     <lightning-combobox class="valEditCmp"
                           name="Classification"
-                          label="Classification"
+                          label="Comment Type"
                           value={recordEdit.Classification}
-                          placeholder="Select Progress"
+                          placeholder="Select Comment Type"
                           options={classsifyPickList}
                           onchange={handleFieldChangeEdit}
                           required></lightning-combobox>
                   </div>
                   <div class="slds-col slds-size_1-of-2 modalPadding" style="margin-top: 20px;">
                     <lightning-input type="checkbox" label="Public" name="IsPublic" onchange={handleFieldChangeEdit} checked={recordEdit.IsPublic}></lightning-input>
+                  </div>
+                  <div class="slds-col slds-size_1-of-1 modalPadding">
+                    <c-cas-comments-lookup icon-name="standard:contact"
+                                       object-name="Contact"
+                                       label="To Address"
+                                       placeholder="Select To Address"
+                                       unique-name="ToAddressEdit"
+                                       needonload=true
+                                       em-addresses={toAddressEdit}
+                                       onemailtoselectionedit={emailToSelectionEditHandler}                                                            
+                      ></c-cas-comments-lookup>
+                  </div>
+                  <div class="slds-col slds-size_1-of-1 modalPadding">
+                    <c-cas-comments-lookup icon-name="standard:contact"
+                                      object-name="Contact"
+                                      label="CC Address"
+                                      placeholder="Select CC Address"
+                                      unique-name="CcAddressEdit"
+                                      needonload=true
+                                      em-addresses={ccAddressEdit}
+                                      onemailccselectionedit={emailCcSelectionEditHandler}                        
+                     ></c-cas-comments-lookup>
+                  </div>
+                  <div class="slds-col slds-size_1-of-1 modalPadding">
+                    <c-cas-comments-lookup icon-name="standard:contact"
+                                     object-name="Contact"
+                                     label="Bcc Address"
+                                     placeholder="Select Bcc Address"
+                                     unique-name="BccAddressEdit"
+                                     needonload=true
+                                     em-addresses={bccAddressEdit}
+                                     onemailbccselectionedit={emailBccSelectionEditHandler}                     
+                    ></c-cas-comments-lookup>
                   </div>                    
                   <div class="slds-col slds-size_1-of-1 modalPadding">
                     <lightning-textarea class="valEditCmp" name="CommentBody" onchange={handleFieldChangeEdit} label="Case Comment" value={recordEdit.CommentBody} required></lightning-textarea>

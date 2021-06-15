@@ -11,7 +11,7 @@ public class CaseCommentsController {
         Map<String,CaseComment> mapCasComment = new Map<String,CaseComment>([SELECT Id, ParentId, IsPublished, CommentBody, CreatedDate, CreatedBy.Name, LastModifiedDate, LastModifiedById FROM CaseComment 
         where parentId=:caseId order by CreatedDate desc]);
 
-        for(CaseComment_Extension__c casComm : [SELECT Id, CaseCommentId__c,Classification__c FROM CaseComment_Extension__c 
+        for(CaseComment_Extension__c casComm : [SELECT Id, CaseCommentId__c,Classification__c,ToAddress__c,CcAddress__c,BccAddress__c FROM CaseComment_Extension__c 
         where CaseCommentId__c=:mapCasComment.keySet() order by CreatedDate desc]){
             mapCustCasComment.put(casComm.CaseCommentId__c,casComm);
         }
@@ -24,6 +24,9 @@ public class CaseCommentsController {
             casCommWrap.createByName = mapCasComment.get(custComm).CreatedBy.Name;
             casCommWrap.IsPublic = mapCasComment.get(custComm).IsPublished;
             casCommWrap.Classification = mapCustCasComment.get(custComm).Classification__c;
+            casCommWrap.CasCommToAddr = mapCustCasComment.get(custComm).ToAddress__c!=null ? prepareEmailAddrList(mapCustCasComment.get(custComm).ToAddress__c) : null;
+            casCommWrap.CasCommCcAddr = mapCustCasComment.get(custComm).CcAddress__c!=null ? prepareEmailAddrList(mapCustCasComment.get(custComm).CcAddress__c) : null;
+            casCommWrap.CasCommBccAddr = mapCustCasComment.get(custComm).BccAddress__c!=null ? prepareEmailAddrList(mapCustCasComment.get(custComm).BccAddress__c) : null;
             casCommList.add(casCommWrap);
         }
 
@@ -34,19 +37,37 @@ public class CaseCommentsController {
     }
 
     @AuraEnabled
-    public static void createCaseComments(Map<String,String> caseCommInfo) {
+    public static void createCaseComments(Map<String,String> caseCommInfo,Map<String,List<String>> allEmailAddr) {
         try {
+            System.debug('toaddress: '+allEmailAddr.get('ToAddress'));
+            System.debug('ccaddress: '+allEmailAddr.get('CcAddress'));
+            System.debug('bccaddress: '+allEmailAddr.get('BccAddress'));
+            String[] ToAddress = allEmailAddr.get('ToAddress');
+            String[] CcAddress = allEmailAddr.get('CcAddress');
+            String[] BccAddress = allEmailAddr.get('BccAddress');
             if(caseCommInfo!=null && caseCommInfo.keySet().size()>0){
+                String commentBody = caseCommInfo.get('CommentBody');
+                String caseId = caseCommInfo.get('CaseId');
+                Boolean isPublic = Boolean.valueOf(caseCommInfo.get('IsPublic'));
                 CaseComment createComm = new CaseComment();
-                createComm.CommentBody = caseCommInfo.get('CommentBody');
-                createComm.parentId = caseCommInfo.get('CaseId');
-                createComm.IsPublished = Boolean.valueOf(caseCommInfo.get('IsPublic'));
+                createComm.CommentBody = commentBody;
+                createComm.parentId = caseId;
+                createComm.IsPublished = isPublic;
                 insert createComm;
 
                 CaseComment_Extension__c createCustComm = new CaseComment_Extension__c();
                 createCustComm.Classification__c = caseCommInfo.get('Classification');
+                if(isPublic){
+                    createCustComm.ToAddress__c = prepareEmailAddrFormat(ToAddress);
+                    createCustComm.CcAddress__c = CcAddress!=null ? prepareEmailAddrFormat(CcAddress) : '';
+                    createCustComm.BccAddress__c = BccAddress!=null ? prepareEmailAddrFormat(BccAddress) : '';
+                }                
                 createCustComm.CaseCommentId__c = createComm.Id;
                 insert createCustComm;
+
+                if(isPublic){
+                    sendMailForCaseComment(ToAddress, CcAddress, BccAddress,commentBody,caseId);
+                }                
             }
             
         } catch (Exception ex) {
@@ -55,23 +76,113 @@ public class CaseCommentsController {
         }
     }
 
+    public static String prepareEmailAddrFormat(String[] emailAddr){
+        String emFormatAddr='';
+        for (String emAddr : emailAddr) {
+            emFormatAddr += emAddr+';';
+        }
+        return emFormatAddr;
+    }
+
+    public static List<String> prepareEmailAddrList(String emailAddr){
+        List<String> lstEmAddr = new List<String>();
+        for (String emAddr : emailAddr.split(';')) {
+            lstEmAddr.add(emAddr);
+        }
+        return lstEmAddr;
+    }
+
+    public static void sendMailForCaseComment(String[] toAddr,String[] ccAddr,String[] bccAddr,String casComm,String casId){
+        List<Messaging.SingleEmailMessage> lstMessage = new List<Messaging.SingleEmailMessage>();
+        Messaging.SingleEmailMessage message = new Messaging.SingleEmailMessage();        
+        Case cas = [Select Id,CaseNumber from Case where Id=:casId];
+        EmailTemplate template = [SELECT Id, Subject, HtmlValue,DeveloperName,Body FROM EmailTemplate WHERE DeveloperName ='Case_Comments_Creation'];
+        String subject = ''; String htmlBody='';String plainBody = '';
+        subject = template.Subject;
+        htmlBody = template.HtmlValue;
+        plainBody = template.Body;
+        
+        if(cas.CaseNumber != null){
+            subject = subject.replace('{!Case.CaseNumber}', cas.CaseNumber);
+            htmlBody = htmlBody.replace('{!Case.CaseNumber}', cas.CaseNumber);
+            htmlBody = htmlBody.replace('{!casenumber}',cas.CaseNumber);
+            plainBody = plainBody.replace('{!Case.CaseNumber}', cas.CaseNumber);
+            plainBody = plainBody.replace('{!casenumber}',cas.CaseNumber);
+        }
+        else{
+            subject = subject.replace('{!Case.CaseNumber}', '');
+            htmlBody = htmlBody.replace('{!Case.CaseNumber}', '');
+            htmlBody = htmlBody.replace('{!casenumber}','');
+            plainBody = plainBody.replace('{!Case.CaseNumber}', '');
+            plainBody = plainBody.replace('{!casenumber}','');
+        }        
+        if(casComm != null){
+            htmlBody = htmlBody.replace('{!CaseComment}',casComm);
+            plainBody = plainBody.replace('{!CaseComment}',casComm);
+        }
+        else{
+            htmlBody = htmlBody.replace('{!CaseComment}','');
+            plainBody = plainBody.replace('{!CaseComment}','');
+        }        
+        htmlBody = htmlBody.replaceAll('<!\\[CDATA\\[', '');
+        htmlBody = htmlBody.replaceAll(']]>', '');
+        message.setSubject(subject);
+        message.setWhatId(cas.Id);
+        message.setHtmlBody(htmlBody);
+        message.setPlainTextBody(plainBody);
+        message.setToAddresses(toAddr);
+        if(ccAddr!=null)
+            message.setCcAddresses(ccAddr);
+        if(bccAddr!=null)
+            message.setBccAddresses(bccAddr);
+        message.setOrgWideEmailAddressId(label.Yourresponse_OrgId);
+        lstMessage.add(message);
+        if(lstMessage.size()>0){
+            try {
+                Messaging.sendEmail(lstMessage);
+            }
+            Catch(Exception e){
+                System.debug('Exception-->'+e);
+            }
+        }
+
+    }
+
     @AuraEnabled
-    public static void updateCaseComments(Map<String,String> caseCommInfo) {
+    public static void updateCaseComments(Map<String,String> caseCommInfo,Map<String,List<String>> allEmailAddr) {
         try {
+            System.debug('toaddress: '+allEmailAddr.get('ToAddress'));
+            System.debug('ccaddress: '+allEmailAddr.get('CcAddress'));
+            System.debug('bccaddress: '+allEmailAddr.get('BccAddress'));
+            String[] ToAddress = allEmailAddr.get('ToAddress');
+            String[] CcAddress = allEmailAddr.get('CcAddress');
+            String[] BccAddress = allEmailAddr.get('BccAddress');
             if(caseCommInfo!=null && caseCommInfo.keySet().size()>0){
+                String commentBody = caseCommInfo.get('CommentBody');
+                Boolean isPublic = Boolean.valueOf(caseCommInfo.get('IsPublic'));
                 CaseComment createComm = new CaseComment();
-                createComm.CommentBody = caseCommInfo.get('CommentBody');
+                createComm.CommentBody = commentBody;
                 createComm.Id = caseCommInfo.get('CasCommentId');
-                createComm.IsPublished = Boolean.valueOf(caseCommInfo.get('IsPublic'));
+                createComm.IsPublished = isPublic;
                 update createComm;
 
                 CaseComment_Extension__c getCustCommId =[Select Id from CaseComment_Extension__c where CaseCommentId__c=: createComm.Id];
                 if(getCustCommId!=null){
                     CaseComment_Extension__c createCustComm = new CaseComment_Extension__c();
                     createCustComm.Classification__c = caseCommInfo.get('Classification');
+                    if(isPublic){
+                        createCustComm.ToAddress__c = prepareEmailAddrFormat(ToAddress);
+                        createCustComm.CcAddress__c = CcAddress!=null ? prepareEmailAddrFormat(CcAddress) : '';
+                        createCustComm.BccAddress__c = BccAddress!=null ? prepareEmailAddrFormat(BccAddress) : '';
+                    }
                     createCustComm.Id = getCustCommId.Id;
                     update createCustComm;
-                }                
+                }
+                if(isPublic){                    
+                    CaseComment casCom = [Select id,ParentId from CaseComment where id=: createComm.Id];
+                    if(casCom!=null)
+                        sendMailForCaseComment(ToAddress, CcAddress, BccAddress,commentBody,casCom.ParentId);
+                }                 
             }            
         } catch (Exception ex) {
             System.debug(ex.getMessage());
@@ -138,5 +249,11 @@ public class CaseCommentsController {
         public String Classification {get;set;}
         @AuraEnabled
         public Boolean IsPublic {get;set;}
+        @AuraEnabled
+        public List<String> CasCommToAddr {get;set;}
+        @AuraEnabled
+        public List<String> CasCommCcAddr {get;set;}
+        @AuraEnabled
+        public List<String> CasCommBccAddr {get;set;}
     }
 }
