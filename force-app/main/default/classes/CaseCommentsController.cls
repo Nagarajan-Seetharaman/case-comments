@@ -207,34 +207,7 @@ public class CaseCommentsController {
             throw new AuraHandledException('Exception in deleteCaseComment method: '+ex.getMessage());
         }
 
-    }
-
-    @AuraEnabled
-    public static List<String> fetchEmailAddrFromCase(String caseId) {
-        List<String> setEmailAddr = null;
-        Map<String,String> mapEmailAddr = null;
-        try {
-            if(caseId!=null){                
-                mapEmailAddr = new Map<String,String>(); 
-                for(EmailMessage emList : [select id,FromAddress, ToAddress, CcAddress from EmailMessage where ParentId =: caseId]){
-                    if(emList.FromAddress!=null)
-                        mapEmailAddr.put(emList.FromAddress, emList.FromAddress);
-                    if(emList.ToAddress!=null)
-                        mapEmailAddr.put(emList.ToAddress,emList.ToAddress);
-                    if(emList.CcAddress!=null)
-                        mapEmailAddr.put(emList.CcAddress,emList.CcAddress);
-                }
-                if (mapEmailAddr!=null && mapEmailAddr.size()>0) {
-                    setEmailAddr = new List<String>();
-                    setEmailAddr.addAll(mapEmailAddr.keySet());
-                }
-            }
-        } catch (Exception ex) {
-            System.debug(ex.getMessage());
-            throw new AuraHandledException('Exception in fetchEmailAddrFromCase method: '+ex.getMessage());
-        }
-        return setEmailAddr;
-    }
+    }    
 
     public class CasCommentInfoWrapper {
         @AuraEnabled
