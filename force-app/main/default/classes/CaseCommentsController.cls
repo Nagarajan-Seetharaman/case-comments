@@ -94,42 +94,8 @@ public class CaseCommentsController {
 
     public static void sendMailForCaseComment(String[] toAddr,String[] ccAddr,String[] bccAddr,String casComm,String casId){
         List<Messaging.SingleEmailMessage> lstMessage = new List<Messaging.SingleEmailMessage>();
-        Messaging.SingleEmailMessage message = new Messaging.SingleEmailMessage();        
-        Case cas = [Select Id,CaseNumber from Case where Id=:casId];
-        EmailTemplate template = [SELECT Id, Subject, HtmlValue,DeveloperName,Body FROM EmailTemplate WHERE DeveloperName ='Case_Comments_Creation'];
-        String subject = ''; String htmlBody='';String plainBody = '';
-        subject = template.Subject;
-        htmlBody = template.HtmlValue;
-        plainBody = template.Body;
-        
-        if(cas.CaseNumber != null){
-            subject = subject.replace('{!Case.CaseNumber}', cas.CaseNumber);
-            htmlBody = htmlBody.replace('{!Case.CaseNumber}', cas.CaseNumber);
-            htmlBody = htmlBody.replace('{!casenumber}',cas.CaseNumber);
-            plainBody = plainBody.replace('{!Case.CaseNumber}', cas.CaseNumber);
-            plainBody = plainBody.replace('{!casenumber}',cas.CaseNumber);
-        }
-        else{
-            subject = subject.replace('{!Case.CaseNumber}', '');
-            htmlBody = htmlBody.replace('{!Case.CaseNumber}', '');
-            htmlBody = htmlBody.replace('{!casenumber}','');
-            plainBody = plainBody.replace('{!Case.CaseNumber}', '');
-            plainBody = plainBody.replace('{!casenumber}','');
-        }        
-        if(casComm != null){
-            htmlBody = htmlBody.replace('{!CaseComment}',casComm);
-            plainBody = plainBody.replace('{!CaseComment}',casComm);
-        }
-        else{
-            htmlBody = htmlBody.replace('{!CaseComment}','');
-            plainBody = plainBody.replace('{!CaseComment}','');
-        }        
-        htmlBody = htmlBody.replaceAll('<!\\[CDATA\\[', '');
-        htmlBody = htmlBody.replaceAll(']]>', '');
-        message.setSubject(subject);
-        message.setWhatId(cas.Id);
-        message.setHtmlBody(htmlBody);
-        message.setPlainTextBody(plainBody);
+        EmailTemplate template = [SELECT Id, Subject, HtmlValue,DeveloperName,Body FROM EmailTemplate WHERE DeveloperName ='New_Case_Comment'];
+        Messaging.SingleEmailMessage message = Messaging.renderStoredEmailTemplate(template.Id, null, casId);        
         message.setToAddresses(toAddr);
         if(ccAddr!=null)
             message.setCcAddresses(ccAddr);
