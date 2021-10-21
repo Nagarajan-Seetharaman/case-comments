@@ -20,10 +20,10 @@ const actions = [
 
 // datatable columns with row actions
 const columns = [
-    {label: 'User', fieldName: 'createByName', type: 'text'},
-    {label: 'Public', fieldName: 'IsPublic', type: 'boolean'},
-    {label: 'Created Date', fieldName: 'CreatedDate', type: 'text'},
-    {label: 'Comment Type', fieldName: 'Classification', type: 'text'},
+    {label: 'User', fieldName: 'createByName', type: 'text',initialWidth: 160},
+    {label: 'Public', fieldName: 'IsPublic', type: 'boolean',initialWidth: 70},
+    {label: 'Created Date', fieldName: 'CreatedDate', type: 'text',initialWidth: 160},
+    {label: 'Comment Type', fieldName: 'Classification', type: 'text',initialWidth: 160},
     {label: 'Comment', fieldName: 'CommentBody', type: 'text', wrapText:'true'},            
     {
         type: 'action',
