@@ -5,12 +5,14 @@ import getCaseComments from '@salesforce/apex/CaseCommentsController.getCaseComm
 import createCaseComments from '@salesforce/apex/CaseCommentsController.createCaseComments';
 import deleteCaseComment from '@salesforce/apex/CaseCommentsController.deleteCaseComment';
 import updateCaseComments from '@salesforce/apex/CaseCommentsController.updateCaseComments';
+import getFilterSearchCaseComments from '@salesforce/apex/CaseCommentsController.getFilterSearchCaseComments';
 
 //To get picklist values
 import { getPicklistValues } from 'lightning/uiObjectInfoApi';
 import CLASSIFICATION_FIELD from '@salesforce/schema/CaseComment_Extension__c.Classification__c';
 
 import { getRecord } from 'lightning/uiRecordApi';
+import hasCasCommPerm from '@salesforce/customPermission/Case_Comments_Custom_Permission';
 
 // row actions
 const actions = [            
@@ -22,6 +24,7 @@ const actions = [
 const columns = [
     {label: 'User', fieldName: 'createByName', type: 'text',initialWidth: 160},
     {label: 'Public', fieldName: 'IsPublic', type: 'boolean',initialWidth: 70},
+    {label: 'File', fieldName: 'HasAttachment', type: 'boolean',initialWidth: 40},
     {label: 'Created Date', fieldName: 'CreatedDate', type: 'text',initialWidth: 160},
     {label: 'Comment Type', fieldName: 'Classification', type: 'text',initialWidth: 160},
     {label: 'Comment', fieldName: 'CommentBody', type: 'text', wrapText:'true'},            
@@ -67,6 +70,11 @@ export default class CasCommentsRelatedList extends LightningElement {
     @track ccAddressEdit=[];
     @track bccAddressEdit=[];
 
+    @track userDrpDwn= [];
+    @track publicDrpDwn= [];
+    @track commTypeDrpDwn= [];
+    @track filterRecord={'FilterComType':'','FilterUser':'','FilterPublic':null,'FromDate':'','ToDate':''};
+
     connectedCallback() {
         //this.initFetch();
     }
@@ -94,6 +102,26 @@ export default class CasCommentsRelatedList extends LightningElement {
                     this.isNoDataFound = false;
                 }
                 this.data = JSON.parse(result);
+                this.userDrpDwn =[];
+                this.commTypeDrpDwn =[];
+                for (var dataVal in this.data) {
+                    let userName = this.data[dataVal].createByName;
+                    let commTypeName = this.data[dataVal].Classification;
+                    if(userName!=null && userName!=undefined){
+                        if(!this.userDrpDwn.some(code => code.label === userName)){
+                            let userObj ={};
+                            userObj = this.prepareDrpDwnVal(userName);
+                            this.userDrpDwn.push(userObj);
+                        }                        
+                    }
+                    if(commTypeName!=null && commTypeName!=undefined){
+                        if(!this.commTypeDrpDwn.some(code => code.label === commTypeName)){
+                            let comTypeObj ={};
+                            comTypeObj = this.prepareDrpDwnVal(commTypeName);
+                            this.commTypeDrpDwn.push(comTypeObj);
+                        }                        
+                    }
+                }
                 this.error = undefined;
                 this.isLoading = false;
             })
@@ -115,6 +143,18 @@ export default class CasCommentsRelatedList extends LightningElement {
             });
 
     }
+    get isSetupEnabled() {
+        return hasCasCommPerm==true? true : false;
+    }
+
+    prepareDrpDwnVal(filterVal){        
+        let prepareAddress ={};
+        prepareAddress={            
+            'label': filterVal,
+            'value': filterVal
+        };
+        return prepareAddress;
+    }
 
     @wire(getPicklistValues, {
         fieldApiName: CLASSIFICATION_FIELD,
@@ -130,6 +170,20 @@ export default class CasCommentsRelatedList extends LightningElement {
             this.classsifyPickList = undefined;            
             console.log('Error getPicklistValues eror'+this.error);
         }
+    }
+
+    get classifyManualOptions() {
+        return [
+            { label: 'Manual', value: 'Manual' },
+            { label: 'CSM/CSPM/CBM Info', value: 'CSM/CSPM/CBM Info' }
+        ];
+    }
+
+    get publicDrpDownOptions() {
+        return [
+            { label: 'True', value: 'True' },
+            { label: 'False', value: 'False' }
+        ];
     }
 
     handleRefreshRecord(){
@@ -158,8 +212,59 @@ export default class CasCommentsRelatedList extends LightningElement {
         console.log(JSON.stringify(this.record));
     }
 
+    handleFilterSearchChange(e) {
+        this.filterRecord[e.currentTarget.name] = e.target.value;  
+        console.log('this.filterRecord[e.currentTarget.name]: '+e.currentTarget.name);
+        console.log('e.target.value: '+e.target.value);
+        console.log(JSON.stringify(this.filterRecord));
+    }
+
+    clrFilterSearch(){
+        this.filterRecord={'FilterComType':'','FilterUser':'','FilterPublic':null,'FromDate':null,'ToDate':null};
+        this.initFetch();
+    }
+
+    filterSearchClick(){ 
+        this.isLoading = true;
+        let filterComTypeVal = this.filterRecord['FilterComType'];
+        let filterUserVal = this.filterRecord['FilterUser'];
+        let filterPublicVal = this.filterRecord['FilterPublic']!=null ? this.filterRecord['FilterPublic'].toLowerCase() == 'true' ? true : false : null;
+        let filterFromDtVal = this.filterRecord['FromDate']=="" ? null: this.filterRecord['FromDate'];
+        let filterToDtVal = this.filterRecord['ToDate']=="" ? null: this.filterRecord['ToDate'];
+        
+        getFilterSearchCaseComments({ casId: this.recordId,userName: filterUserVal,commType:filterComTypeVal,isPublic:filterPublicVal,startDt:filterFromDtVal,endDt:filterToDtVal})
+            .then(result => {
+                console.log('getFilterSearchCaseComments data: '+JSON.parse(result));
+                if(JSON.parse(result).length==0){
+                    this.isNoDataFound = true;
+                    console.log('Inside the getFilterSearchCaseComments length method '+this.isNoDataFound);
+                }else{
+                    this.isNoDataFound = false;
+                }
+                this.data = JSON.parse(result);              
+                this.error = undefined;
+                this.isLoading = false;
+            })
+            .catch(error => {
+                this.error = error;
+                this.data = undefined;
+                this.isLoading = false;
+                this.showErrorOnPage = true;
+                // UI API read operations return an array of objects
+                if (Array.isArray(error.body)) {
+                    this.error = error.body.map(e => e.message).join(', ');
+                } 
+                // UI API write operations, Apex read and write operations 
+                // and network errors return a single object
+                else if (typeof error.body.message === 'string') {
+                    this.error = error.body.message;
+                }
+                console.log('Error Inside getFilterSearchCaseComments'+this.error);
+            });
+    }
+
     saveModalAction(){       
-        this.invalidEmailAddr.splice(0,this.invalidEmailAddr.length);
+        /*this.invalidEmailAddr.splice(0,this.invalidEmailAddr.length);
         this.mapAllAddress={'ToAddress':null,'CcAddress':null,'BccAddress':null}; 
         if(this.toAddress!=undefined){
             this.checkValidEmail(this.toAddress);
@@ -179,14 +284,14 @@ export default class CasCommentsRelatedList extends LightningElement {
             isToAddressAdded = false;
         }else{
             isToAddressAdded = true;
-        }
+        }*/
         const isInputsCorrect = [...this.template.querySelectorAll('.valCmp')]
             .reduce((validSoFar, inputField) => {
                 inputField.reportValidity();
                 return validSoFar && inputField.checkValidity();
             }, true);
 
-        if(this.invalidEmailAddr.length==0 && isToAddressAdded){
+        //if(this.invalidEmailAddr.length==0 && isToAddressAdded){
             this.showErrorOnModal = false;
             if(isInputsCorrect){            
                 console.log('all valid');
@@ -223,14 +328,14 @@ export default class CasCommentsRelatedList extends LightningElement {
                         console.log('Error Inside saveModalAction'+this.error);
                     });
             }
-        }else if(!isToAddressAdded){
+        /*}else if(!isToAddressAdded){
             this.error = `To Address is mandatory if Public checked`;
             this.showErrorOnModal = true;
         }else{
             console.log('invalid in save: '+JSON.stringify(this.invalidEmailAddr) );
             this.error = `${this.invalidEmailAddr} not a valid email address`;
             this.showErrorOnModal = true;
-        }
+        }*/
     }
 
     closeModalAction(){
@@ -438,7 +543,7 @@ export default class CasCommentsRelatedList extends LightningElement {
         let invalidAddr = [];
         let allValidEmails = true;
         emailAddrs.forEach(addr =>  {
-            if(addr!=null && addr!=undefined && !addr.match(regExpEmailformat)){
+            if(addr!=null && addr!=undefined && !addr.trim().match(regExpEmailformat)){
                 invalidAddr.push(addr);
                 console.log('invalidAddr: '+invalidAddr);
                 this.invalidEmailAddr.push(addr);                
