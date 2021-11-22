@@ -12,7 +12,47 @@
         <p class="divErrorPageHead">Review the errors on this page.</p>
         <div class="divfontSize">{error}</div>
       </div>
-    </template>    
+    </template>
+    <div>
+      <template if:true={data}>
+          <lightning-layout>
+            <lightning-layout-item padding="around-small" flexibility="grow" size="4">
+              <lightning-combobox class=""
+                              name="FilterUser"
+                              label="Filter User"
+                              value={filterRecord.FilterUser}
+                              placeholder="Select User Name"
+                              options={userDrpDwn}
+                              onchange={handleFilterSearchChange}                            
+                              ></lightning-combobox>
+                <lightning-combobox class=""
+                              name="FilterPublic"
+                              label="Filter Public"
+                              value={filterRecord.FilterPublic}
+                              placeholder="Select True/False"
+                              options={publicDrpDownOptions}
+                              onchange={handleFilterSearchChange}                            
+                              ></lightning-combobox>                              
+            </lightning-layout-item>
+            <lightning-layout-item padding="around-small" flexibility="grow" size="4">
+              <lightning-combobox class=""
+                              name="FilterComType"
+                              label="Filter Comment Type"
+                              value={filterRecord.FilterComType}
+                              placeholder="Select Comment Type"
+                              options={commTypeDrpDwn}
+                              onchange={handleFilterSearchChange}                            
+                              ></lightning-combobox> 
+                <lightning-input type="date" placeholder="Select Range From" name="FromDate" label="Range From" value={filterRecord.FromDate} onchange={handleFilterSearchChange}></lightning-input>             
+            </lightning-layout-item>
+            <lightning-layout-item padding="around-small" flexibility="grow" size="4" class="clsButton">
+              <lightning-button variant="brand" label="Search" class="clsButtonAlign" onclick={filterSearchClick}></lightning-button>
+              <lightning-button variant="destructive" label="Clear" class="clsButtonAlign" onclick={clrFilterSearch}></lightning-button>
+              <lightning-input type="date" placeholder="Select Range To" name="ToDate" label="Range To" value={filterRecord.ToDate} onchange={handleFilterSearchChange}></lightning-input>             
+            </lightning-layout-item>
+          </lightning-layout>          
+        </template>
+    </div>    
     <article class="slds-card lightning-card slds-card_boundary headerBottomBorder cardDisplay">
         <div class="slds-card__header slds-grid" style="height: 50px;">
           <header class="slds-media slds-media_center slds-has-flexi-truncate ">
@@ -87,14 +127,20 @@
                             label="Comment Type"
                             value={record.Classification}
                             placeholder="Select Comment Type"
-                            options={classsifyPickList}
+                            options={classifyManualOptions}
                             onchange={handleFieldChange}                            
                             required></lightning-combobox>
                     </div>
                     <div class="slds-col slds-size_1-of-2 modalPadding" style="margin-top: 20px;">
-                      <lightning-input type="checkbox" label="Public" name="IsPublic" onchange={handleFieldChange} value={record.IsPublic}></lightning-input>
+                      <!--<lightning-input type="checkbox" label="Public" name="IsPublic" onchange={handleFieldChange} value={record.IsPublic}></lightning-input>-->
+                      <template if:true={isSetupEnabled}>
+                        <lightning-input type="checkbox" label="Public" name="IsPublic" onchange={handleFieldChange} value={record.IsPublic}></lightning-input>
+                      </template>
+                      <template if:false={isSetupEnabled}>
+                        <lightning-input type="checkbox" label="Public" name="IsPublic" onchange={handleFieldChange} value={record.IsPublic} disabled></lightning-input>
+                      </template>
                     </div>
-                    <div class="slds-col slds-size_1-of-1 modalPadding">                                            
+                    <!--<div class="slds-col slds-size_1-of-1 modalPadding">                                            
                       <c-cas-comments-lookup icon-name="standard:contact"
                                          object-name="Contact"
                                          label="To Address"
@@ -120,7 +166,7 @@
                                        unique-name="BccAddress"
                                        onemailbccselection={emailBccSelectionHandler}                         
                       ></c-cas-comments-lookup>
-                    </div>                    
+                    </div>-->                    
                     <div class="slds-col slds-size_1-of-1 modalPadding" >
                       <lightning-textarea class="valCmp" name="CommentBody" onchange={handleFieldChange} label="Case Comment" value={record.CommentBody} required></lightning-textarea>
                     </div>
@@ -169,7 +215,13 @@
                           required></lightning-combobox>
                   </div>
                   <div class="slds-col slds-size_1-of-2 modalPadding" style="margin-top: 20px;">
-                    <lightning-input type="checkbox" label="Public" name="IsPublic" onchange={handleFieldChangeEdit} checked={recordEdit.IsPublic}></lightning-input>
+                    <!--<lightning-input type="checkbox" label="Public" name="IsPublic" onchange={handleFieldChangeEdit} checked={recordEdit.IsPublic}></lightning-input>-->
+                    <template if:true={isSetupEnabled}>
+                      <lightning-input type="checkbox" label="Public" name="IsPublic" onchange={handleFieldChangeEdit} checked={recordEdit.IsPublic}></lightning-input>
+                    </template>
+                    <template if:false={isSetupEnabled}>
+                      <lightning-input type="checkbox" label="Public" name="IsPublic" onchange={handleFieldChangeEdit} checked={recordEdit.IsPublic} disabled></lightning-input>
+                    </template>
                   </div>
                   <div class="slds-col slds-size_1-of-1 modalPadding">
                     <c-cas-comments-lookup icon-name="standard:contact"

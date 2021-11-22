@@ -11,7 +11,7 @@ public class CaseCommentsController {
         Map<String,CaseComment> mapCasComment = new Map<String,CaseComment>([SELECT Id, ParentId, IsPublished, CommentBody, CreatedDate, CreatedBy.Name, LastModifiedDate, LastModifiedById FROM CaseComment 
         where parentId=:caseId order by CreatedDate desc]);
 
-        for(CaseComment_Extension__c casComm : [SELECT Id, CaseCommentId__c,Classification__c,ToAddress__c,CcAddress__c,BccAddress__c FROM CaseComment_Extension__c 
+        for(CaseComment_Extension__c casComm : [SELECT Id, CaseCommentId__c,Classification__c,ToAddress__c,CcAddress__c,BccAddress__c,HasAttachment__c FROM CaseComment_Extension__c 
         where CaseCommentId__c=:mapCasComment.keySet() order by CreatedDate desc]){
             mapCustCasComment.put(casComm.CaseCommentId__c,casComm);
         }
@@ -27,6 +27,7 @@ public class CaseCommentsController {
             casCommWrap.CasCommToAddr = mapCustCasComment.get(custComm).ToAddress__c!=null ? prepareEmailAddrList(mapCustCasComment.get(custComm).ToAddress__c) : null;
             casCommWrap.CasCommCcAddr = mapCustCasComment.get(custComm).CcAddress__c!=null ? prepareEmailAddrList(mapCustCasComment.get(custComm).CcAddress__c) : null;
             casCommWrap.CasCommBccAddr = mapCustCasComment.get(custComm).BccAddress__c!=null ? prepareEmailAddrList(mapCustCasComment.get(custComm).BccAddress__c) : null;
+            casCommWrap.HasAttachment = mapCustCasComment.get(custComm).HasAttachment__c;
             casCommList.add(casCommWrap);
         }
 
@@ -57,17 +58,18 @@ public class CaseCommentsController {
 
                 CaseComment_Extension__c createCustComm = new CaseComment_Extension__c();
                 createCustComm.Classification__c = caseCommInfo.get('Classification');
-                if(isPublic){
+                createCustComm.Case__c = caseId;
+                /*if(isPublic){
                     createCustComm.ToAddress__c = prepareEmailAddrFormat(ToAddress);
                     createCustComm.CcAddress__c = CcAddress!=null ? prepareEmailAddrFormat(CcAddress) : '';
                     createCustComm.BccAddress__c = BccAddress!=null ? prepareEmailAddrFormat(BccAddress) : '';
-                }                
+                }*/                
                 createCustComm.CaseCommentId__c = createComm.Id;
                 insert createCustComm;
 
-                if(isPublic){
+                /*if(isPublic){
                     sendMailForCaseComment(ToAddress, CcAddress, BccAddress,commentBody,caseId);
-                }                
+                }*/                
             }
             
         } catch (Exception ex) {
@@ -173,7 +175,85 @@ public class CaseCommentsController {
             throw new AuraHandledException('Exception in deleteCaseComment method: '+ex.getMessage());
         }
 
-    }    
+    }
+    
+    @AuraEnabled
+    public static string getFilterSearchCaseComments(String casId, String userName,String commType,Boolean isPublic,Date startDt,Date endDt) {
+        String query;
+        String response = '';
+        String condition = (String.isNotBlank(userName)
+                            ? 'CreatedBy.Name LIKE \'' + '%' + userName + '%\''
+                            : '');
+        
+        condition += (isPublic!=null
+                      ? (String.isNotBlank(condition) ? +' AND ' : '') +
+                      ' IsPublished = ' +
+                      isPublic 
+                      : '');
+        
+        condition += (startDt!=null
+                      ? (String.isNotBlank(condition) ? +' AND ' : '') +
+                      ' DAY_ONLY(CreatedDate) >= ' +
+                      String.valueOf(startDt) 
+                      : '');
+		condition += (endDt!=null
+                      ? (String.isNotBlank(condition) ? +' AND ' : '') +
+                      ' DAY_ONLY(CreatedDate) <= ' +
+                      String.valueOf(endDt) 
+                      : '');
+        condition += (String.isNotBlank(casId)
+                      ? (String.isNotBlank(condition) ? +' AND ' : '') +
+                      ' ParentId = \'' +
+                      casId + '\''
+                      : '');
+        
+        System.debug('condition ' + condition);
+        if (String.isNotBlank(condition)) {
+            query =
+                'SELECT Id, ParentId, IsPublished, CommentBody, CreatedDate, CreatedBy.Name, LastModifiedDate, LastModifiedById FROM CaseComment WHERE ' +
+                condition +
+                ' ORDER BY CreatedDate desc';
+        }
+        System.debug('query: '+query);
+        List<CaseComment> lstCasComment = Database.query(query);
+        List<CasCommentInfoWrapper> casCommList = new List<CasCommentInfoWrapper>();
+        Map<String,CaseComment> mapCasComment = new Map<String,CaseComment>();
+        Map<String,CaseComment_Extension__c> mapCustCasComment = new Map<String,CaseComment_Extension__c>();
+        for(CaseComment casComm : lstCasComment){
+            mapCasComment.put(casComm.Id,casComm);
+        }
+        List<CaseComment_Extension__c> lstCasCommExt = new List<CaseComment_Extension__c>();
+        if(String.isNotBlank(commType))
+            lstCasCommExt =[SELECT Id, CaseCommentId__c,Classification__c,ToAddress__c,CcAddress__c,BccAddress__c,HasAttachment__c FROM CaseComment_Extension__c 
+                            where CaseCommentId__c=:mapCasComment.keySet() AND Classification__c=:commType order by CreatedDate desc];
+        else
+            lstCasCommExt =[SELECT Id, CaseCommentId__c,Classification__c,ToAddress__c,CcAddress__c,BccAddress__c,HasAttachment__c FROM CaseComment_Extension__c 
+                            where CaseCommentId__c=:mapCasComment.keySet() order by CreatedDate desc];
+            
+        for(CaseComment_Extension__c casComm : lstCasCommExt){
+            mapCustCasComment.put(casComm.CaseCommentId__c,casComm);
+        }
+
+        for(String custComm : mapCustCasComment.keySet()){
+            CasCommentInfoWrapper casCommWrap = new CasCommentInfoWrapper();
+            casCommWrap.CasCommentId = mapCasComment.get(custComm).Id;
+            casCommWrap.CommentBody = mapCasComment.get(custComm).CommentBody;
+            casCommWrap.CreatedDate = mapCasComment.get(custComm).CreatedDate.format('MM/dd/yyyy hh:mm a');
+            casCommWrap.createByName = mapCasComment.get(custComm).CreatedBy.Name;
+            casCommWrap.IsPublic = mapCasComment.get(custComm).IsPublished;
+            casCommWrap.Classification = mapCustCasComment.get(custComm).Classification__c;
+            casCommWrap.CasCommToAddr = mapCustCasComment.get(custComm).ToAddress__c!=null ? prepareEmailAddrList(mapCustCasComment.get(custComm).ToAddress__c) : null;
+            casCommWrap.CasCommCcAddr = mapCustCasComment.get(custComm).CcAddress__c!=null ? prepareEmailAddrList(mapCustCasComment.get(custComm).CcAddress__c) : null;
+            casCommWrap.CasCommBccAddr = mapCustCasComment.get(custComm).BccAddress__c!=null ? prepareEmailAddrList(mapCustCasComment.get(custComm).BccAddress__c) : null;
+            casCommWrap.HasAttachment = mapCustCasComment.get(custComm).HasAttachment__c;
+            casCommList.add(casCommWrap);
+        }
+
+        system.debug('getFilterSearchCaseComments casCommList: '+casCommList);
+        response = JSON.serialize(casCommList, true);
+
+        return response;
+    }
 
     public class CasCommentInfoWrapper {
         @AuraEnabled
@@ -194,5 +274,7 @@ public class CaseCommentsController {
         public List<String> CasCommCcAddr {get;set;}
         @AuraEnabled
         public List<String> CasCommBccAddr {get;set;}
+        @AuraEnabled
+        public Boolean HasAttachment {get;set;}
     }
 }

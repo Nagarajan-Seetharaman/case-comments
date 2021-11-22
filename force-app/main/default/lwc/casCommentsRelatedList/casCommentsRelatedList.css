@@ -44,3 +44,11 @@
     background-color: white;
     border-bottom-style: inset;
 }
+.clsButton{
+    padding-top: 35px;
+}
+.clsButtonAlign{
+    font-size: large;
+    padding-right: 20px;
+    font-weight: bold;
+}
